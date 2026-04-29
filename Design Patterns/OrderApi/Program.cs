@@ -47,8 +47,9 @@ builder.Services.AddSingleton<IRefreshTokenStore, InMemoryTokenStore>();
 builder.Services.AddSingleton<IAccessTokenBlacklist, InMemoryTokenStore>();
 
 // ─── OAuth Providers [Pattern: Factory] [OCP] ─────────────
-builder.Services.AddScoped<GoogleOAuthProvider>();
-builder.Services.AddScoped<GitHubOAuthProvider>();
+// Register typed HttpClient instances so the providers can receive HttpClient via DI
+builder.Services.AddHttpClient<GoogleOAuthProvider>();
+builder.Services.AddHttpClient<GitHubOAuthProvider>();
 builder.Services.AddScoped<OAuthProviderFactory>();
 
 // ─── Payment Processors [Pattern: Factory] [LSP] ──────────
@@ -102,6 +103,9 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 // ─── Swagger with JWT Bearer Support ───────────────────────
 builder.Services.AddSwaggerGen(c =>
 {
+    // Ensure unique schema IDs for types with same short name in different namespaces
+    c.CustomSchemaIds(type => type.FullName?.Replace('+', '.') ?? type.Name);
+
     c.SwaggerDoc("v1", new OpenApiInfo
     {
         Title = "Order Management API",
@@ -285,4 +289,3 @@ static void SeedDatabase(IServiceProvider services)
 
     dbContext.SaveChanges();
 }
-
