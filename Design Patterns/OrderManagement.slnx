@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="OrderApi.BlazorClient/OrderApi.BlazorClient.csproj" />
+  <Project Path="OrderApi.Tests/OrderApi.Tests.csproj" />
+  <Project Path="OrderApi/OrderApi.csproj" />
+</Solution>
