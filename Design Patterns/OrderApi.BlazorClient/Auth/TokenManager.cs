@@ -20,9 +20,9 @@ public sealed class TokenManager
         await _localStorage.SetItemAsync(RefreshTokenKey, refreshToken);
     }
 
-    public Task<string?> GetAccessTokenAsync() => _localStorage.GetItemAsync<string>(AccessTokenKey);
+    public ValueTask<string?> GetAccessTokenAsync() => _localStorage.GetItemAsync<string>(AccessTokenKey);
 
-    public Task<string?> GetRefreshTokenAsync() => _localStorage.GetItemAsync<string>(RefreshTokenKey);
+    public ValueTask<string?> GetRefreshTokenAsync() => _localStorage.GetItemAsync<string>(RefreshTokenKey);
 
     public async Task ClearTokensAsync()
     {
