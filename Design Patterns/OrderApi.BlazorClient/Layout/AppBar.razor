@@ -1,0 +1,56 @@
+@* [Pattern: Decorator][SRP] Displays user info and logout outside the main navigation. *@
+@using System.Security.Claims
+@using OrderApi.BlazorClient.Services
+@using OrderApi.BlazorClient.Routes
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IAuthService AuthService
+@inject INotificationService NotificationService
+@inject NavigationManager Navigation
+
+<AuthorizeView Context="authState">
+    <Authorized>
+        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+            <MudText Typo="Typo.body2" Color="Color.Inherit">
+                @GetUserEmail(authState)
+            </MudText>
+            <MudChip T="string" Color="Color.Secondary" Variant="Variant.Filled" Size="Size.Small">
+                @GetUserRole(authState)
+            </MudChip>
+            <MudIconButton Icon="@Icons.Material.Filled.Logout" Color="Color.Inherit" @onclick="HandleLogout" />
+        </MudStack>
+    </Authorized>
+    <NotAuthorized>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="@AppRoutes.Login" Size="Size.Small">
+            Login
+        </MudButton>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code
+{
+    private string GetUserEmail(AuthenticationState? authState)
+    {
+        var user = authState?.User;
+        return user?.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value ?? "Guest";
+    }
+
+    private string GetUserRole(AuthenticationState? authState)
+    {
+        var user = authState?.User;
+        return user?.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "User";
+    }
+
+    private async Task HandleLogout()
+    {
+        try
+        {
+            await AuthService.LogoutAsync();
+            Navigation.NavigateTo(AppRoutes.Login, forceLoad: false);
+            NotificationService.ShowSuccess("Logged out successfully.");
+        }
+        catch (Exception ex)
+        {
+            NotificationService.ShowError($"Logout error: {ex.Message}");
+        }
+    }
+}

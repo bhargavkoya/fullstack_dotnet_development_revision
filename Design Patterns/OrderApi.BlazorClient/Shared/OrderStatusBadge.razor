@@ -1,0 +1,27 @@
+@using MudBlazor
+
+<MudChip T="string" Color="@GetColor()" Variant="Variant.Filled" Icon="@GetIcon()">
+    @Status
+</MudChip>
+
+@code
+{
+    [Parameter]
+    public string Status { get; set; } = string.Empty;
+
+    private Color GetColor() => Status?.Trim().ToLowerInvariant() switch
+    {
+        "pending" => Color.Warning,
+        "confirmed" => Color.Success,
+        "cancelled" => Color.Error,
+        _ => Color.Default
+    };
+
+    private string GetIcon() => Status?.Trim().ToLowerInvariant() switch
+    {
+        "pending" => Icons.Material.Filled.HourglassEmpty,
+        "confirmed" => Icons.Material.Filled.CheckCircle,
+        "cancelled" => Icons.Material.Filled.Cancel,
+        _ => Icons.Material.Filled.Info
+    };
+}

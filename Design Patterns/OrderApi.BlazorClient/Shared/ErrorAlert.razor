@@ -1,0 +1,19 @@
+@if (!_isDismissed && !string.IsNullOrWhiteSpace(Message))
+{
+    <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Dense="true">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Style="width: 100%;">
+            <MudText>@Message</MudText>
+            <MudIconButton Icon="@Icons.Material.Filled.Close" Color="Color.Inherit" OnClick="Dismiss" />
+        </MudStack>
+    </MudAlert>
+}
+
+@code
+{
+    [Parameter]
+    public string? Message { get; set; }
+
+    private bool _isDismissed;
+
+    private void Dismiss() => _isDismissed = true;
+}

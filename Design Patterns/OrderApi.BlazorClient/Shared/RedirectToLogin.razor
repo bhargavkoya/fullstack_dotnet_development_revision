@@ -1,0 +1,10 @@
+@* [Pattern: Chain of Responsibility] Unauthenticated users are caught at the router level and redirected here. *@
+@inject NavigationManager Navigation
+
+@code
+{
+    protected override void OnInitialized()
+    {
+        Navigation.NavigateTo($"{AppRoutes.Login}?returnUrl={Uri.EscapeDataString(Navigation.Uri)}", forceLoad: false);
+    }
+}

@@ -1,0 +1,60 @@
+@using OrderApi.BlazorClient.Models.Requests
+
+<MudCard Elevation="0">
+    <MudCardContent>
+        <MudStack Spacing="3">
+            <MudTextField T="string"
+                          Label="Email"
+                          Variant="Variant.Outlined"
+                          @bind-Value="_email"
+                          Disabled="@IsBusy"
+                          Required="true"
+                          Immediate="true" />
+            <MudTextField T="string"
+                          Label="Password"
+                          Variant="Variant.Outlined"
+                          InputType="InputType.Password"
+                          @bind-Value="_password"
+                          Disabled="@IsBusy"
+                          Required="true"
+                          Immediate="true" />
+            <MudButton Color="Color.Primary"
+                       Variant="Variant.Filled"
+                       FullWidth="true"
+                       Disabled="@IsBusy"
+                       OnClick="SubmitAsync">
+                @if (IsBusy)
+                {
+                    <MudProgressCircular Indeterminate="true" Size="Size.Small" Class="mr-2" />
+                    <span>Signing in...</span>
+                }
+                else
+                {
+                    <span>Sign In</span>
+                }
+            </MudButton>
+        </MudStack>
+    </MudCardContent>
+</MudCard>
+
+@code
+{
+    [Parameter]
+    public bool IsBusy { get; set; }
+
+    [Parameter]
+    public EventCallback<LoginRequest> OnSubmit { get; set; }
+
+    private string _email = string.Empty;
+    private string _password = string.Empty;
+
+    private async Task SubmitAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_email) || string.IsNullOrWhiteSpace(_password))
+        {
+            return;
+        }
+
+        await OnSubmit.InvokeAsync(new LoginRequest(_email.Trim(), _password));
+    }
+}

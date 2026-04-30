@@ -1,39 +1,32 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">OrderApi.BlazorClient</a>
-        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-    </div>
-</div>
+﻿@* [Pattern: Chain of Responsibility][SRP] Role-aware navigation using AuthorizeView to control which links appear. *@
+@using System.Security.Claims
+@inject AuthenticationStateProvider AuthStateProvider
 
-<div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
-    <nav class="flex-column">
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="counter">
-                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Counter
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="weather">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Weather
-            </NavLink>
-        </div>
-    </nav>
-</div>
+<AuthorizeView Context="navAuthState">
+    <Authorized>
+        <MudNavLink Href="@AppRoutes.MyOrders" Icon="@Icons.Material.Filled.ShoppingCart" IconColor="Color.Inherit">
+            My Orders
+        </MudNavLink>
 
-@code {
-    private bool collapseNavMenu = true;
+        <AuthorizeView Roles="Admin" Context="adminAuthState">
+            <MudNavLink Href="@AppRoutes.AllOrders" Icon="@Icons.Material.Filled.ManageSearch" IconColor="Color.Inherit">
+                All Orders (Admin)
+            </MudNavLink>
+        </AuthorizeView>
 
-    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+        <MudNavLink Href="@AppRoutes.PlaceOrder" Icon="@Icons.Material.Filled.AddCircle" IconColor="Color.Inherit">
+            Place Order
+        </MudNavLink>
 
-    private void ToggleNavMenu()
-    {
-        collapseNavMenu = !collapseNavMenu;
-    }
-}
+        <MudDivider Class="my-2" />
+
+        <MudNavLink Href="@AppRoutes.Login" Icon="@Icons.Material.Filled.ExitToApp" IconColor="Color.Inherit">
+            Logout
+        </MudNavLink>
+    </Authorized>
+    <NotAuthorized>
+        <MudNavLink Href="@AppRoutes.Login" Icon="@Icons.Material.Filled.Login" IconColor="Color.Inherit">
+            Login
+        </MudNavLink>
+    </NotAuthorized>
+</AuthorizeView>
