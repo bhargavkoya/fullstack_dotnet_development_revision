@@ -27,7 +27,7 @@
 
     private Task ViewDetailsAsync()
     {
-        Navigation.NavigateTo($"/orders/{Order.Id}");
+        Navigation.NavigateTo(AppRoutes.OrderDetailPath(Order.Id));
         return Task.CompletedTask;
     }
 }

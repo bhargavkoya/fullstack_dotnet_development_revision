@@ -1,0 +1,82 @@
+@attribute [Route(AppRoutes.MyOrders)]
+@attribute [Authorize]
+@implements IDisposable
+@inject IOrderService OrderService
+@inject IAppState AppState
+@inject NavigationManager Navigation
+
+<PageTitle>My Orders</PageTitle>
+
+<MudStack Spacing="4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Wrap="Wrap.Wrap" Spacing="2">
+        <MudStack Spacing="1">
+            <MudText Typo="Typo.h4">My Orders</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                Review your order history and continue where you left off.
+            </MudText>
+        </MudStack>
+
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.AddShoppingCart"
+                   OnClick="GoToPlaceOrder">
+            Place New Order
+        </MudButton>
+    </MudStack>
+
+    <ErrorAlert Message="@_errorMessage" />
+
+    <LoadingSpinner IsLoading="@_isLoading">
+        @if (AppState.Orders.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
+                No orders yet. Place your first order to get started.
+            </MudAlert>
+        }
+        else
+        {
+            <MudGrid Spacing="3">
+                @foreach (var order in AppState.Orders)
+                {
+                    <MudItem xs="12" sm="6" lg="4">
+                        <OrderCard Order="order" />
+                    </MudItem>
+                }
+            </MudGrid>
+        }
+    </LoadingSpinner>
+</MudStack>
+
+@code {
+    private bool _isLoading = true;
+    private string? _errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        AppState.OnChange += HandleStateChanged;
+
+        try
+        {
+            _isLoading = true;
+            _errorMessage = null;
+            await OrderService.GetMyOrdersAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void HandleStateChanged() => InvokeAsync(StateHasChanged);
+
+    private void GoToPlaceOrder() => Navigation.NavigateTo(AppRoutes.PlaceOrder);
+
+    public void Dispose()
+    {
+        AppState.OnChange -= HandleStateChanged;
+    }
+}

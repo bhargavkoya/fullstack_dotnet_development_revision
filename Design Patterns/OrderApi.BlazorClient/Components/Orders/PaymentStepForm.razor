@@ -1,0 +1,121 @@
+<MudCard Elevation="1">
+    <MudCardContent>
+        <MudStack Spacing="4">
+            <MudText Typo="Typo.h6">Payment</MudText>
+
+            <MudRadioGroup T="string" Value="@PaymentProvider" ValueChanged="OnPaymentProviderChanged">
+                <MudGrid Spacing="2">
+                    <MudItem xs="12" md="6">
+                        <MudPaper Class="pa-4" Outlined="true">
+                            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                                <MudIcon Icon="@Icons.Material.Filled.CreditCard" />
+                                <MudRadio T="string" Value="@StripeProvider">Stripe</MudRadio>
+                            </MudStack>
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudPaper Class="pa-4" Outlined="true">
+                            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                                <MudIcon Icon="@Icons.Material.Filled.AccountBalanceWallet" />
+                                <MudRadio T="string" Value="@PaypalProvider">PayPal</MudRadio>
+                            </MudStack>
+                        </MudPaper>
+                    </MudItem>
+                </MudGrid>
+            </MudRadioGroup>
+
+            <MudPaper Class="pa-4" Elevation="0" Outlined="true">
+                <MudStack Spacing="2">
+                    <MudText Typo="Typo.subtitle2">Order Summary</MudText>
+                    @foreach (var item in Items)
+                    {
+                        <MudStack Row="true" Justify="Justify.SpaceBetween">
+                            <MudText>@item.ProductName x @item.Quantity</MudText>
+                            <MudText>@item.LineTotal.ToString("C")</MudText>
+                        </MudStack>
+                    }
+
+                    <MudDivider />
+                    <MudStack Row="true" Justify="Justify.SpaceBetween">
+                        <MudText>Subtotal</MudText>
+                        <MudText>@Subtotal.ToString("C")</MudText>
+                    </MudStack>
+                    <MudStack Row="true" Justify="Justify.SpaceBetween">
+                        <MudText>Discount (@DiscountType)</MudText>
+                        <MudText>-@DiscountAmount.ToString("C")</MudText>
+                    </MudStack>
+                    <MudStack Row="true" Justify="Justify.SpaceBetween">
+                        <MudText Typo="Typo.h6">Final Total</MudText>
+                        <MudText Typo="Typo.h6" Color="Color.Primary">@TotalAmount.ToString("C")</MudText>
+                    </MudStack>
+                </MudStack>
+            </MudPaper>
+
+            <MudStack Row="true" Justify="Justify.SpaceBetween" Wrap="Wrap.Wrap" Spacing="2">
+                <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="OnBackClicked" Disabled="@IsBusy">
+                    Back
+                </MudButton>
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           Disabled="@IsBusy"
+                           OnClick="OnSubmitClicked">
+                    @if (IsBusy)
+                    {
+                        <MudProgressCircular Indeterminate="true" Size="Size.Small" Class="mr-2" />
+                        <span>Placing Order...</span>
+                    }
+                    else
+                    {
+                        <span>Place Order</span>
+                    }
+                </MudButton>
+            </MudStack>
+        </MudStack>
+    </MudCardContent>
+</MudCard>
+
+@code
+{
+    private const string StripeProvider = "stripe";
+    private const string PaypalProvider = "paypal";
+
+    [Parameter]
+    public IReadOnlyList<PlaceOrderLineDraft> Items { get; set; } = [];
+
+    [Parameter]
+    public string DiscountType { get; set; } = "none";
+
+    [Parameter]
+    public string PaymentProvider { get; set; } = "stripe";
+
+    [Parameter]
+    public EventCallback<string> PaymentProviderChanged { get; set; }
+
+    [Parameter]
+    public decimal Subtotal { get; set; }
+
+    [Parameter]
+    public decimal DiscountAmount { get; set; }
+
+    [Parameter]
+    public decimal TotalAmount { get; set; }
+
+    [Parameter]
+    public bool IsBusy { get; set; }
+
+    [Parameter]
+    public EventCallback OnBack { get; set; }
+
+    [Parameter]
+    public EventCallback OnSubmit { get; set; }
+
+    private async Task OnPaymentProviderChanged(string value)
+    {
+        PaymentProvider = value;
+        await PaymentProviderChanged.InvokeAsync(value);
+    }
+
+    private async Task OnBackClicked() => await OnBack.InvokeAsync();
+
+    private async Task OnSubmitClicked() => await OnSubmit.InvokeAsync();
+}

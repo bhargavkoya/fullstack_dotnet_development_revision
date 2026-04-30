@@ -10,4 +10,6 @@ public static class AppRoutes
     public const string OrderDetail = "/orders/{id}";
     public const string OAuthCallback = "/oauth-callback";
     public const string Unauthorized = "/unauthorized";
+
+    public static string OrderDetailPath(Guid id) => $"/orders/{id}";
 }

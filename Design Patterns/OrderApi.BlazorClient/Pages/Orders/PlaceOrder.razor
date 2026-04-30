@@ -1,0 +1,126 @@
+@attribute [Route(AppRoutes.PlaceOrder)]
+@attribute [Authorize]
+@inject OrderRequestBuilderFactory OrderRequestBuilderFactory
+@inject IOrderService OrderService
+@inject INotificationService NotificationService
+@inject NavigationManager Navigation
+
+<PageTitle>Place Order</PageTitle>
+
+<MudStack Spacing="4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Wrap="Wrap.Wrap" Spacing="2">
+        <MudStack Spacing="1">
+            <MudText Typo="Typo.h4">Place Order</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">Build your order in two steps, then submit it through the API.</MudText>
+        </MudStack>
+
+        <MudChip T="string" Color="Color.Info" Variant="Variant.Filled">
+            @_activeStepText
+        </MudChip>
+    </MudStack>
+
+    <ErrorAlert Message="@_errorMessage" />
+
+    <MudStepper linear="true" ActiveIndex="@_activeStep">
+        <MudStep label="Order Items">
+            <PlaceOrderForm Items="@_items"
+                            DiscountType="@_discountType"
+                            DiscountTypeChanged="OnDiscountTypeChanged"
+                            Subtotal="@Subtotal"
+                            DiscountAmount="@DiscountAmount"
+                            TotalAmount="@TotalAmount" />
+
+            <MudStack Class="mt-4" Row="true" Justify="Justify.FlexEnd">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="GoToPaymentStep">
+                    Continue
+                </MudButton>
+            </MudStack>
+        </MudStep>
+
+        <MudStep label="Payment">
+            <PaymentStepForm Items="@_items"
+                             DiscountType="@_discountType"
+                             PaymentProvider="@_paymentProvider"
+                             PaymentProviderChanged="OnPaymentProviderChanged"
+                             Subtotal="@Subtotal"
+                             DiscountAmount="@DiscountAmount"
+                             TotalAmount="@TotalAmount"
+                             IsBusy="@_isSubmitting"
+                             OnBack="GoToItemStep"
+                             OnSubmit="SubmitOrderAsync" />
+        </MudStep>
+    </MudStepper>
+</MudStack>
+
+@code {
+    private readonly List<PlaceOrderLineDraft> _items = [new()];
+    private string _discountType = "none";
+    private string _paymentProvider = "stripe";
+    private int _activeStep;
+    private bool _isSubmitting;
+    private string? _errorMessage;
+
+    private string _activeStepText => _activeStep == 0 ? "Step 1 of 2" : "Step 2 of 2";
+
+    private decimal Subtotal => _items.Sum(item => item.LineTotal);
+
+    private decimal DiscountAmount => _discountType switch
+    {
+        "seasonal" => Subtotal * 0.15m,
+        "loyalty" => Subtotal * 0.20m,
+        _ => 0m
+    };
+
+    private decimal TotalAmount => Math.Max(0m, Subtotal - DiscountAmount);
+
+    private void GoToPaymentStep() => _activeStep = 1;
+
+    private void GoToItemStep() => _activeStep = 0;
+
+    private Task OnDiscountTypeChanged(string value)
+    {
+        _discountType = value;
+        return Task.CompletedTask;
+    }
+
+    private Task OnPaymentProviderChanged(string value)
+    {
+        _paymentProvider = value;
+        return Task.CompletedTask;
+    }
+
+    private async Task SubmitOrderAsync()
+    {
+        try
+        {
+            _isSubmitting = true;
+            _errorMessage = null;
+
+            var builder = OrderRequestBuilderFactory.CreateForCustomer(_discountType)
+                .WithPaymentProvider(_paymentProvider);
+
+            foreach (var item in _items)
+            {
+                builder.AddItem(item.ProductId, item.ProductName, item.Quantity, item.UnitPrice);
+            }
+
+            var createdOrder = await OrderService.PlaceOrderAsync(builder.Build());
+            if (createdOrder is null)
+            {
+                _errorMessage = "The order could not be placed.";
+                return;
+            }
+
+            NotificationService.ShowSuccess("Order placed successfully.");
+            Navigation.NavigateTo(AppRoutes.MyOrders);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+}

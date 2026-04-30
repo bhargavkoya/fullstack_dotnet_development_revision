@@ -1,0 +1,123 @@
+<MudCard Elevation="1">
+    <MudCardContent>
+        <MudStack Spacing="4">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Wrap="Wrap.Wrap" Spacing="2">
+                <MudText Typo="Typo.h6">Order Items</MudText>
+                <MudChip T="string" Color="Color.Info" Variant="Variant.Filled">
+                    @Items.Count item(s)
+                </MudChip>
+            </MudStack>
+
+            <MudSelect T="string"
+                       Label="Discount Type"
+                       Variant="Variant.Outlined"
+                       Value="@DiscountType"
+                       ValueChanged="OnDiscountTypeChanged"
+                       Dense="true">
+                <MudSelectItem Value="@NoneDiscountType">None</MudSelectItem>
+                <MudSelectItem Value="@SeasonalDiscountType">Seasonal (-15%)</MudSelectItem>
+                <MudSelectItem Value="@LoyaltyDiscountType">Loyalty (-20%)</MudSelectItem>
+            </MudSelect>
+
+            <MudStack Spacing="3">
+                @for (var index = 0; index < Items.Count; index++)
+                {
+                    var item = Items[index];
+
+                    <MudPaper Class="pa-4" Elevation="0" Outlined="true">
+                        <MudGrid Spacing="2">
+                            <MudItem xs="12" md="6">
+                                <MudTextField T="string"
+                                              Label="Product Name"
+                                              Variant="Variant.Outlined"
+                                              @bind-Value="item.ProductName"
+                                              Immediate="true" />
+                            </MudItem>
+                            <MudItem xs="6" md="2">
+                                <MudNumericField T="int"
+                                                 Label="Qty"
+                                                 Variant="Variant.Outlined"
+                                                 @bind-Value="item.Quantity"
+                                                 Min="1"
+                                                 Immediate="true" />
+                            </MudItem>
+                            <MudItem xs="6" md="2">
+                                <MudNumericField T="decimal"
+                                                 Label="Unit Price"
+                                                 Variant="Variant.Outlined"
+                                                 @bind-Value="item.UnitPrice"
+                                                 Min="0"
+                                                 Immediate="true" />
+                            </MudItem>
+                            <MudItem xs="12" md="2" Class="d-flex align-center justify-end">
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                               Color="Color.Error"
+                                               Disabled="@(Items.Count == 1)"
+                                               OnClick="() => RemoveItemAsync(index)" />
+                            </MudItem>
+                        </MudGrid>
+                    </MudPaper>
+                }
+            </MudStack>
+
+            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Wrap="Wrap.Wrap" Spacing="2">
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Add"
+                           OnClick="AddItemAsync">
+                    Add Item
+                </MudButton>
+
+                <MudStack AlignItems="AlignItems.End" Spacing="0">
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Subtotal</MudText>
+                    <MudText Typo="Typo.h6">@Subtotal.ToString("C")</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Discount: @DiscountAmount.ToString("C")</MudText>
+                    <MudText Typo="Typo.h5" Color="Color.Primary">Total: @TotalAmount.ToString("C")</MudText>
+                </MudStack>
+            </MudStack>
+        </MudStack>
+    </MudCardContent>
+</MudCard>
+
+@code
+{
+    private const string NoneDiscountType = "none";
+    private const string SeasonalDiscountType = "seasonal";
+    private const string LoyaltyDiscountType = "loyalty";
+
+    [Parameter]
+    public List<PlaceOrderLineDraft> Items { get; set; } = [];
+
+    [Parameter]
+    public string DiscountType { get; set; } = "none";
+
+    [Parameter]
+    public EventCallback<string> DiscountTypeChanged { get; set; }
+
+    [Parameter]
+    public decimal Subtotal { get; set; }
+
+    [Parameter]
+    public decimal DiscountAmount { get; set; }
+
+    [Parameter]
+    public decimal TotalAmount { get; set; }
+
+    private async Task OnDiscountTypeChanged(string value)
+    {
+        DiscountType = value;
+        await DiscountTypeChanged.InvokeAsync(value);
+    }
+
+    private async Task AddItemAsync() => await InvokeAsync(() => Items.Add(new PlaceOrderLineDraft()));
+
+    private async Task RemoveItemAsync(int index)
+    {
+        if (Items.Count == 1)
+        {
+            return;
+        }
+
+        await InvokeAsync(() => Items.RemoveAt(index));
+    }
+}

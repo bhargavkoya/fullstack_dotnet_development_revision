@@ -1,0 +1,188 @@
+@attribute [Route(AppRoutes.OrderDetail)]
+@attribute [Authorize]
+@implements IDisposable
+@inject IOrderService OrderService
+@inject INotificationService NotificationService
+@inject IDialogService DialogService
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>Order Detail</PageTitle>
+
+@if (_showUnauthorized)
+{
+    <Unauthorized />
+}
+else
+{
+    <MudStack Spacing="4">
+        <LoadingSpinner IsLoading="@_isLoading">
+            <ErrorAlert Message="@_errorMessage" />
+
+            @if (Order is not null)
+            {
+                <MudCard Elevation="2">
+                    <MudCardContent>
+                        <MudStack Spacing="3">
+                            <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Wrap="Wrap.Wrap" Spacing="2">
+                                <MudStack Spacing="1">
+                                    <MudText Typo="Typo.h4">Order @TruncateGuid(Order.Id)</MudText>
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">Created @Order.CreatedAt.ToLocalTime().ToString("f")</MudText>
+                                </MudStack>
+                                <OrderStatusBadge Status="@Order.Status" />
+                            </MudStack>
+
+                            <MudGrid Spacing="2">
+                                <MudItem xs="12" md="4">
+                                    <MudPaper Class="pa-4" Outlined="true">
+                                        <MudText Typo="Typo.caption">Customer ID</MudText>
+                                        <MudText Typo="Typo.body1">@TruncateGuid(Order.CustomerId)</MudText>
+                                    </MudPaper>
+                                </MudItem>
+                                <MudItem xs="12" md="4">
+                                    <MudPaper Class="pa-4" Outlined="true">
+                                        <MudText Typo="Typo.caption">Status</MudText>
+                                        <MudText Typo="Typo.body1">@Order.Status</MudText>
+                                    </MudPaper>
+                                </MudItem>
+                                <MudItem xs="12" md="4">
+                                    <MudPaper Class="pa-4" Outlined="true">
+                                        <MudText Typo="Typo.caption">Total Amount</MudText>
+                                        <MudText Typo="Typo.h5" Color="Color.Primary">@Order.TotalAmount.ToString("C")</MudText>
+                                    </MudPaper>
+                                </MudItem>
+                            </MudGrid>
+                        </MudStack>
+                    </MudCardContent>
+                </MudCard>
+
+                <MudCard Elevation="1">
+                    <MudCardContent>
+                        <MudStack Spacing="2">
+                            <MudText Typo="Typo.h6">Items</MudText>
+                            <MudTable Items="@Order.Items" Dense="true" Hover="true" Elevation="0">
+                                <HeaderContent>
+                                    <MudTh>Product</MudTh>
+                                    <MudTh>Qty</MudTh>
+                                    <MudTh>Unit Price</MudTh>
+                                    <MudTh>Line Total</MudTh>
+                                </HeaderContent>
+                                <RowTemplate>
+                                    <OrderItemRow Item="context" />
+                                </RowTemplate>
+                            </MudTable>
+                        </MudStack>
+                    </MudCardContent>
+                </MudCard>
+
+                @if (CanCancelOrder)
+                {
+                    <MudStack Row="true" Justify="Justify.FlexEnd">
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Error"
+                                   StartIcon="@Icons.Material.Filled.Cancel"
+                                   OnClick="ConfirmCancelAsync">
+                            Cancel Order
+                        </MudButton>
+                    </MudStack>
+                }
+            }
+        </LoadingSpinner>
+    </MudStack>
+}
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private OrderResponse? Order;
+    private bool _isLoading = true;
+    private bool _showUnauthorized;
+    private string? _errorMessage;
+    private string? _currentUserId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        _currentUserId = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        await LoadOrderAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Order is null)
+        {
+            await Task.CompletedTask;
+        }
+    }
+
+    private async Task LoadOrderAsync()
+    {
+        try
+        {
+            _isLoading = true;
+            _errorMessage = null;
+            _showUnauthorized = false;
+
+            Order = await OrderService.GetOrderByIdAsync(Id);
+        }
+        catch (ApiException ex) when (ex.StatusCode == 403)
+        {
+            _showUnauthorized = true;
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private bool CanCancelOrder => Order is not null
+        && string.Equals(Order.Status, "Pending", StringComparison.OrdinalIgnoreCase)
+        && string.Equals(_currentUserId, Order.CustomerId.ToString(), StringComparison.OrdinalIgnoreCase);
+
+    private async Task ConfirmCancelAsync()
+    {
+        if (!CanCancelOrder || Order is null)
+        {
+            return;
+        }
+
+        var parameters = new DialogParameters
+        {
+            [nameof(ConfirmDialog.Title)] = "Cancel Order",
+            [nameof(ConfirmDialog.Message)] = $"Cancel order {TruncateGuid(Order.Id)}?",
+            [nameof(ConfirmDialog.OnConfirm)] = EventCallback.Factory.Create(this, CancelOrderAsync)
+        };
+
+        DialogService.Show<ConfirmDialog>(string.Empty, parameters);
+        await Task.CompletedTask;
+    }
+
+    private async Task CancelOrderAsync()
+    {
+        if (Order is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await OrderService.CancelOrderAsync(Order.Id);
+            NotificationService.ShowSuccess("Order cancelled successfully.");
+            Order = Order with { Status = "Cancelled" };
+        }
+        catch (Exception ex)
+        {
+            NotificationService.ShowError(ex.Message);
+        }
+    }
+
+    private static string TruncateGuid(Guid id) => $"{id:N}"[..8] + "...";
+
+    public void Dispose()
+    {
+    }
+}
