@@ -1,0 +1,213 @@
+@attribute [Route(AppRoutes.AllOrders)]
+@attribute [Authorize(Roles = "Admin")]
+@implements IDisposable
+@inject IOrderService OrderService
+@inject IAppState AppState
+@inject IDialogService DialogService
+@inject INotificationService NotificationService
+
+<PageTitle>All Orders</PageTitle>
+
+<AuthorizeView Roles="Admin">
+    <Authorized>
+        <MudStack Spacing="4">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Wrap="Wrap.Wrap" Spacing="2">
+                <MudStack Spacing="1">
+                    <MudText Typo="Typo.h4">All Orders</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">Search, review, and manage every order in the system.</MudText>
+                </MudStack>
+
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Refresh"
+                           Disabled="@_isLoading"
+                           OnClick="ReloadAsync">
+                    Refresh
+                </MudButton>
+            </MudStack>
+
+            <MudPaper Class="pa-4" Elevation="0" Outlined="true">
+                <MudGrid Spacing="2">
+                    <MudItem xs="12" md="8">
+                        <MudTextField T="string"
+                                      Label="Search"
+                                      Variant="Variant.Outlined"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.Search"
+                                      Immediate="true"
+                                      @bind-Value="_searchText" />
+                    </MudItem>
+                    <MudItem xs="12" md="4">
+                        <MudSelect T="string" Label="Status" Variant="Variant.Outlined" @bind-Value="_statusFilter">
+                            <MudSelectItem Value="@AllStatus">All</MudSelectItem>
+                            <MudSelectItem Value="@PendingStatus">Pending</MudSelectItem>
+                            <MudSelectItem Value="@ConfirmedStatus">Confirmed</MudSelectItem>
+                            <MudSelectItem Value="@CancelledStatus">Cancelled</MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
+
+            <ErrorAlert Message="@_errorMessage" />
+
+            <LoadingSpinner IsLoading="@_isLoading">
+                @if (_showUnauthorized)
+                {
+                    <Unauthorized />
+                }
+                else
+                {
+                <MudDataGrid T="OrderResponse"
+                             Items="@FilteredOrders"
+                             Dense="true"
+                             Hover="true"
+                             Bordered="true"
+                             Striped="true"
+                             RowsPerPage="10"
+                             SortMode="SortMode.Multiple">
+                    <Columns>
+                        <TemplateColumn Title="Order ID">
+                            <CellTemplate Context="orderCell">
+                                @TruncateGuid(orderCell.Item.Id)
+                            </CellTemplate>
+                        </TemplateColumn>
+                        <TemplateColumn Title="Customer ID">
+                            <CellTemplate Context="customerCell">
+                                @TruncateGuid(customerCell.Item.CustomerId)
+                            </CellTemplate>
+                        </TemplateColumn>
+                        <PropertyColumn Property="x => x.CreatedAt" Title="Date" Format="g" />
+                        <TemplateColumn Title="Items">
+                            <CellTemplate Context="itemsCell">
+                                @itemsCell.Item.Items.Count
+                            </CellTemplate>
+                        </TemplateColumn>
+                        <PropertyColumn Property="x => x.TotalAmount" Title="Total" Format="C" />
+                        <TemplateColumn Title="Status">
+                            <CellTemplate Context="statusCell">
+                                <OrderStatusBadge Status="@statusCell.Item.Status" />
+                            </CellTemplate>
+                        </TemplateColumn>
+                        <TemplateColumn Title="Actions" Sortable="false">
+                            <CellTemplate Context="actionCell">
+                                <MudIconButton Icon="@Icons.Material.Filled.Cancel"
+                                               Color="Color.Error"
+                                               Disabled="@IsCancelled(actionCell.Item)"
+                                               OnClick="() => ConfirmCancelAsync(actionCell.Item)" />
+                            </CellTemplate>
+                        </TemplateColumn>
+                    </Columns>
+                </MudDataGrid>
+                }
+            </LoadingSpinner>
+        </MudStack>
+    </Authorized>
+    <NotAuthorized>
+        <Unauthorized />
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    private const string AllStatus = "All";
+    private const string PendingStatus = "Pending";
+    private const string ConfirmedStatus = "Confirmed";
+    private const string CancelledStatus = "Cancelled";
+
+    private bool _isLoading = true;
+    private bool _showUnauthorized;
+    private string? _errorMessage;
+    private string _searchText = string.Empty;
+    private string _statusFilter = AllStatus;
+
+    protected override async Task OnInitializedAsync()
+    {
+        AppState.OnChange += HandleStateChanged;
+        await ReloadAsync();
+    }
+
+    private IEnumerable<OrderResponse> FilteredOrders => AppState.Orders.Where(order =>
+    {
+        var matchesStatus = string.Equals(_statusFilter, AllStatus, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(order.Status, _statusFilter, StringComparison.OrdinalIgnoreCase);
+
+        if (!matchesStatus)
+        {
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(_searchText))
+        {
+            return true;
+        }
+
+        var search = _searchText.Trim();
+        return order.Status.Contains(search, StringComparison.OrdinalIgnoreCase)
+            || order.Id.ToString().Contains(search, StringComparison.OrdinalIgnoreCase)
+            || order.CustomerId.ToString().Contains(search, StringComparison.OrdinalIgnoreCase);
+    });
+
+    private async Task ReloadAsync()
+    {
+        try
+        {
+            _isLoading = true;
+            _errorMessage = null;
+            _showUnauthorized = false;
+            await OrderService.GetAllOrdersAsync();
+        }
+        catch (ApiException ex) when (ex.StatusCode == 403)
+        {
+            _showUnauthorized = true;
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task ConfirmCancelAsync(OrderResponse order)
+    {
+        if (IsCancelled(order))
+        {
+            return;
+        }
+
+        var parameters = new DialogParameters
+        {
+            [nameof(ConfirmDialog.Title)] = "Cancel Order",
+            [nameof(ConfirmDialog.Message)] = $"Cancel order {TruncateGuid(order.Id)}? This action cannot be undone.",
+            [nameof(ConfirmDialog.OnConfirm)] = EventCallback.Factory.Create(this, () => CancelOrderAsync(order.Id))
+        };
+
+        DialogService.Show<ConfirmDialog>(string.Empty, parameters);
+        await Task.CompletedTask;
+    }
+
+    private async Task CancelOrderAsync(Guid id)
+    {
+        try
+        {
+            await OrderService.CancelOrderAsync(id);
+            NotificationService.ShowSuccess("Order cancelled successfully.");
+        }
+        catch (Exception ex)
+        {
+            NotificationService.ShowError(ex.Message);
+        }
+    }
+
+    private static bool IsCancelled(OrderResponse order) => string.Equals(order.Status, "Cancelled", StringComparison.OrdinalIgnoreCase);
+
+    private static string TruncateGuid(Guid id) => $"{id:N}"[..8] + "...";
+
+    private void HandleStateChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        AppState.OnChange -= HandleStateChanged;
+    }
+}

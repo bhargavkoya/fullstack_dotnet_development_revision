@@ -66,7 +66,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        _returnUrl = GetQueryValue("returnUrl") ?? AppRoutes.MyOrders;
+        _returnUrl = NormalizeReturnUrl(GetQueryValue("returnUrl"));
         _errorMessage = GetQueryValue("error") == "oauth_failed"
             ? "OAuth sign-in failed. Please try again."
             : null;
@@ -74,7 +74,7 @@
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         if (authState.User.Identity?.IsAuthenticated == true)
         {
-            Navigation.NavigateTo(_returnUrl, forceLoad: false);
+            Navigation.NavigateTo(AppRoutes.MyOrders, forceLoad: false);
         }
     }
 
@@ -139,6 +139,21 @@
     {
         var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
         return ParseQueryString(uri.Query, key);
+    }
+
+    private static string NormalizeReturnUrl(string? returnUrl)
+    {
+        if (string.IsNullOrWhiteSpace(returnUrl))
+        {
+            return AppRoutes.MyOrders;
+        }
+
+        if (!returnUrl.StartsWith("/", StringComparison.Ordinal) || returnUrl.StartsWith("//", StringComparison.Ordinal))
+        {
+            return AppRoutes.MyOrders;
+        }
+
+        return returnUrl;
     }
 
     private static string? ParseQueryString(string query, string key)

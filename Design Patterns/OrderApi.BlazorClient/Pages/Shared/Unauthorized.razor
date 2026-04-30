@@ -1,0 +1,20 @@
+@attribute [Route(AppRoutes.Unauthorized)]
+
+<PageTitle>Unauthorized</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="py-16">
+    <MudCard Elevation="3">
+        <MudCardContent>
+            <MudStack Spacing="3" AlignItems="AlignItems.Center">
+                <MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Large" Color="Color.Error" />
+                <MudText Typo="Typo.h4" Align="Align.Center">Unauthorized</MudText>
+                <MudText Typo="Typo.body1" Align="Align.Center" Color="Color.Secondary">
+                    You do not have permission to view this page.
+                </MudText>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="@AppRoutes.MyOrders">
+                    Back to My Orders
+                </MudButton>
+            </MudStack>
+        </MudCardContent>
+    </MudCard>
+</MudContainer>
