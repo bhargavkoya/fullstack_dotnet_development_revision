@@ -1,0 +1,20 @@
+@* [SRP] Displays a loading spinner conditionally. *@
+@if (IsLoading)
+{
+    <div class="d-flex justify-center align-center" style="height: 200px;">
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+    </div>
+}
+else
+{
+    @ChildContent
+}
+
+@code
+{
+    [Parameter]
+    public bool IsLoading { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+}

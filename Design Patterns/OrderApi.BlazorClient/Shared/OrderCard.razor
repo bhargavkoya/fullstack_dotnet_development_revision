@@ -1,0 +1,33 @@
+@inject NavigationManager Navigation
+
+<MudCard Elevation="2" Class="h-100">
+    <MudCardContent>
+        <MudStack Spacing="2">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                <MudText Typo="Typo.h6">@GetShortId()</MudText>
+                <OrderStatusBadge Status="@Order.Status" />
+            </MudStack>
+            <MudText Typo="Typo.body2">@Order.CreatedAt.ToLocalTime().ToString("g")</MudText>
+            <MudText Typo="Typo.h5">@Order.TotalAmount.ToString("C")</MudText>
+        </MudStack>
+    </MudCardContent>
+    <MudCardActions>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ViewDetailsAsync">
+            View Details
+        </MudButton>
+    </MudCardActions>
+</MudCard>
+
+@code
+{
+    [Parameter]
+    public OrderResponse Order { get; set; } = default!;
+
+    private string GetShortId() => Order.Id.ToString("N")[..8];
+
+    private Task ViewDetailsAsync()
+    {
+        Navigation.NavigateTo($"/orders/{Order.Id}");
+        return Task.CompletedTask;
+    }
+}

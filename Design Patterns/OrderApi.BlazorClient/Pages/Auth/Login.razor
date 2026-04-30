@@ -1,0 +1,165 @@
+@attribute [Route(AppRoutes.Login)]
+@using OrderApi.BlazorClient.Models.Requests
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+@inject INotificationService NotificationService
+
+<PageTitle>Login</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="login-shell">
+    <MudPaper Elevation="8" Class="login-card pa-8">
+        <MudStack Spacing="4">
+            <MudStack AlignItems="AlignItems.Center" Spacing="1">
+                <MudAvatar Size="Size.Large" Color="Color.Primary">
+                    <MudIcon Icon="@Icons.Material.Filled.Storefront" />
+                </MudAvatar>
+                <MudText Typo="Typo.h4" Align="Align.Center">Order Management</MudText>
+                <MudText Typo="Typo.body2" Align="Align.Center" Color="Color.Secondary">
+                    Sign in to manage orders, review activity, and place new requests.
+                </MudText>
+            </MudStack>
+
+            <ErrorAlert Message="@_errorMessage" />
+
+            <LoginForm IsBusy="@_isBusy" OnSubmit="HandleLoginAsync" />
+
+            <MudStack Spacing="2">
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Info"
+                           FullWidth="true"
+                           Disabled="@_isBusy"
+                           OnClick="LoginWithGoogleAsync">
+                    Login with Google
+                </MudButton>
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Default"
+                           FullWidth="true"
+                           Disabled="@_isBusy"
+                           OnClick="LoginWithGitHubAsync">
+                    Login with GitHub
+                </MudButton>
+            </MudStack>
+
+            @if (_isBusy)
+            {
+                <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.Center" Spacing="2">
+                    <MudProgressCircular Indeterminate="true" Size="Size.Small" />
+                    <MudText Typo="Typo.body2">Authenticating...</MudText>
+                </MudStack>
+            }
+
+            <MudPaper Class="pa-4 login-credentials-card">
+                <MudText Typo="Typo.subtitle2">Seeded demo credentials</MudText>
+                <MudText Typo="Typo.body2">Admin: admin@orderapi.com / Admin123!</MudText>
+                <MudText Typo="Typo.body2">Customer: customer@orderapi.com / Customer123!</MudText>
+            </MudPaper>
+        </MudStack>
+    </MudPaper>
+</MudContainer>
+
+@code
+{
+    private bool _isBusy;
+    private string? _errorMessage;
+    private string _returnUrl = AppRoutes.MyOrders;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _returnUrl = GetQueryValue("returnUrl") ?? AppRoutes.MyOrders;
+        _errorMessage = GetQueryValue("error") == "oauth_failed"
+            ? "OAuth sign-in failed. Please try again."
+            : null;
+
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        if (authState.User.Identity?.IsAuthenticated == true)
+        {
+            Navigation.NavigateTo(_returnUrl, forceLoad: false);
+        }
+    }
+
+    private async Task HandleLoginAsync(LoginRequest request)
+    {
+        try
+        {
+            _isBusy = true;
+            _errorMessage = null;
+
+            var response = await AuthService.LoginAsync(request.Email, request.Password);
+            if (response is null)
+            {
+                _errorMessage = "Login failed.";
+                return;
+            }
+
+            NotificationService.ShowSuccess("Signed in successfully.");
+            Navigation.NavigateTo(_returnUrl, forceLoad: false);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+    private async Task LoginWithGoogleAsync() => await StartOAuthAsync("google");
+
+    private async Task LoginWithGitHubAsync() => await StartOAuthAsync("github");
+
+    private async Task StartOAuthAsync(string provider)
+    {
+        try
+        {
+            _isBusy = true;
+            _errorMessage = null;
+
+            var authorizationUrl = await AuthService.GetOAuthUrlAsync(provider);
+            if (string.IsNullOrWhiteSpace(authorizationUrl))
+            {
+                _errorMessage = $"Unable to start {provider} sign-in.";
+                return;
+            }
+
+            Navigation.NavigateTo(authorizationUrl, forceLoad: true);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+    private string? GetQueryValue(string key)
+    {
+        var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+        return ParseQueryString(uri.Query, key);
+    }
+
+    private static string? ParseQueryString(string query, string key)
+    {
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            return null;
+        }
+
+        foreach (var pair in query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var parts = pair.Split('=', 2);
+            var name = Uri.UnescapeDataString(parts[0]);
+            if (!string.Equals(name, key, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            return parts.Length > 1 ? Uri.UnescapeDataString(parts[1]) : string.Empty;
+        }
+
+        return null;
+    }
+}
