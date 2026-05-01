@@ -1,5 +1,5 @@
 @attribute [Route(AppRoutes.PlaceOrder)]
-@attribute [Authorize]
+@attribute [Authorize(Roles = "Customer")]
 @inject OrderRequestBuilderFactory OrderRequestBuilderFactory
 @inject IOrderService OrderService
 @inject INotificationService NotificationService
@@ -21,11 +21,24 @@
 
     <ErrorAlert Message="@_errorMessage" />
 
+    @if (_isLoadingProducts)
+    {
+        <LoadingSpinner IsLoading="true" />
+    }
+    else if (_availableProducts.Count == 0)
+    {
+        <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined">
+            No products are currently available for ordering.
+        </MudAlert>
+    }
+    else
+    {
+
     <MudStepper linear="true" ActiveIndex="@_activeStep">
         <MudStep label="Order Items">
             <PlaceOrderForm Items="@_items"
+                            Products="@_availableProducts"
                             DiscountType="@_discountType"
-                            DiscountTypeChanged="OnDiscountTypeChanged"
                             Subtotal="@Subtotal"
                             DiscountAmount="@DiscountAmount"
                             TotalAmount="@TotalAmount" />
@@ -50,14 +63,18 @@
                              OnSubmit="SubmitOrderAsync" />
         </MudStep>
     </MudStepper>
+    }
 </MudStack>
 
 @code {
     private readonly List<PlaceOrderLineDraft> _items = [new()];
-    private string _discountType = "none";
+    private readonly List<ProductCatalogItemResponse> _availableProducts = [];
+    private const string CustomerDiscountType = "loyalty";
+    private string _discountType = CustomerDiscountType;
     private string _paymentProvider = "stripe";
     private int _activeStep;
     private bool _isSubmitting;
+    private bool _isLoadingProducts = true;
     private string? _errorMessage;
 
     private string _activeStepText => _activeStep == 0 ? "Step 1 of 2" : "Step 2 of 2";
@@ -77,10 +94,30 @@
 
     private void GoToItemStep() => _activeStep = 0;
 
-    private Task OnDiscountTypeChanged(string value)
+    protected override async Task OnInitializedAsync()
     {
-        _discountType = value;
-        return Task.CompletedTask;
+        try
+        {
+            _isLoadingProducts = true;
+            _errorMessage = null;
+
+            var products = await OrderService.GetAvailableProductsAsync();
+            _availableProducts.Clear();
+            _availableProducts.AddRange(products);
+
+            if (_availableProducts.Count > 0)
+            {
+                ApplyProductToDraft(_items[0], _availableProducts[0]);
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+        finally
+        {
+            _isLoadingProducts = false;
+        }
     }
 
     private Task OnPaymentProviderChanged(string value)
@@ -95,6 +132,12 @@
         {
             _isSubmitting = true;
             _errorMessage = null;
+
+            if (_items.Any(item => item.ProductId == Guid.Empty))
+            {
+                _errorMessage = "Select a product for every order item before submitting.";
+                return;
+            }
 
             var builder = OrderRequestBuilderFactory.CreateForCustomer(_discountType)
                 .WithPaymentProvider(_paymentProvider);
@@ -122,5 +165,12 @@
         {
             _isSubmitting = false;
         }
+    }
+
+    private static void ApplyProductToDraft(PlaceOrderLineDraft draft, ProductCatalogItemResponse product)
+    {
+        draft.ProductId = product.ProductId;
+        draft.ProductName = product.ProductName;
+        draft.UnitPrice = product.UnitPrice;
     }
 }

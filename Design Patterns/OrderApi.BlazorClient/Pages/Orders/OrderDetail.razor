@@ -86,6 +86,12 @@ else
                     </MudStack>
                 }
             }
+            else if (!_isLoading && string.IsNullOrWhiteSpace(_errorMessage) && !_showUnauthorized)
+            {
+                <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
+                    The requested order could not be found.
+                </MudAlert>
+            }
         </LoadingSpinner>
     </MudStack>
 }
@@ -104,15 +110,19 @@ else
     {
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         _currentUserId = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-        await LoadOrderAsync();
     }
 
     protected override async Task OnParametersSetAsync()
     {
-        if (Order is null)
+        if (Id == Guid.Empty)
         {
-            await Task.CompletedTask;
+            Order = null;
+            _errorMessage = "Invalid order id.";
+            _isLoading = false;
+            return;
         }
+
+        await LoadOrderAsync();
     }
 
     private async Task LoadOrderAsync()

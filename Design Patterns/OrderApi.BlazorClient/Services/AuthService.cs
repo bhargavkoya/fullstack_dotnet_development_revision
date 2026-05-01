@@ -62,7 +62,14 @@ public sealed class AuthService : IAuthService
         var refreshToken = await _tokenManager.GetRefreshTokenAsync();
         if (!string.IsNullOrWhiteSpace(refreshToken))
         {
-            await _authApiClient.LogoutAsync(refreshToken);
+            try
+            {
+                await _authApiClient.LogoutAsync(refreshToken);
+            }
+            catch (ApiException ex) when (ex.StatusCode == 401)
+            {
+                // Token can be expired/revoked already; clear local state regardless.
+            }
         }
 
         await _authStateProvider.MarkUserAsLoggedOut();

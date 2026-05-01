@@ -12,9 +12,11 @@
             </MudNavLink>
         </AuthorizeView>
 
-        <MudNavLink Href="@AppRoutes.PlaceOrder" Icon="@Icons.Material.Filled.AddCircle" IconColor="Color.Inherit">
-            Place Order
-        </MudNavLink>
+        <AuthorizeView Roles="Customer" Context="customerAuthState">
+            <MudNavLink Href="@AppRoutes.PlaceOrder" Icon="@Icons.Material.Filled.AddCircle" IconColor="Color.Inherit">
+                Place Order
+            </MudNavLink>
+        </AuthorizeView>
     </Authorized>
     <NotAuthorized>
         <MudNavLink Href="@AppRoutes.Login" Icon="@Icons.Material.Filled.Login" IconColor="Color.Inherit">

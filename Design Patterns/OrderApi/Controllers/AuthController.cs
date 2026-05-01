@@ -66,7 +66,7 @@ public sealed class AuthController : ControllerBase
     /// <summary>Logout by blacklisting the current refresh token.</summary>
     /// <param name="request">Refresh token to revoke.</param>
     [HttpPost("logout")]
-    [Authorize]
+    [AllowAnonymous]
     public async Task<IActionResult> LogoutAsync([FromBody] LogoutRequest request, CancellationToken cancellationToken)
     {
         try

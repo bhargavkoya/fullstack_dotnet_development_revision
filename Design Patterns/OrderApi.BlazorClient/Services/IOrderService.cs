@@ -6,6 +6,9 @@ namespace OrderApi.BlazorClient.Services;
 /// <summary>[Pattern: ISP][SRP][DIP][CQRS] Exposes order query and command operations to the UI layer.</summary>
 public interface IOrderService
 {
+    /// <summary>[CQRS] Queries available products for order placement.</summary>
+    Task<ProductCatalogItemResponse[]> GetAvailableProductsAsync();
+
     /// <summary>[CQRS] Queries the authenticated user's orders.</summary>
     Task<OrderResponse[]> GetMyOrdersAsync();
 

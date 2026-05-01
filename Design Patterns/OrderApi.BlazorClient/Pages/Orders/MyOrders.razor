@@ -16,12 +16,14 @@
             </MudText>
         </MudStack>
 
-        <MudButton Variant="Variant.Filled"
-                   Color="Color.Primary"
-                   StartIcon="@Icons.Material.Filled.AddShoppingCart"
-                   OnClick="GoToPlaceOrder">
-            Place New Order
-        </MudButton>
+        <AuthorizeView Roles="Customer" Context="customerAuthState">
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.AddShoppingCart"
+                       OnClick="GoToPlaceOrder">
+                Place New Order
+            </MudButton>
+        </AuthorizeView>
     </MudStack>
 
     <ErrorAlert Message="@_errorMessage" />
