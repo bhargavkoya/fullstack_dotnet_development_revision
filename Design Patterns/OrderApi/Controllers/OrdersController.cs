@@ -16,12 +16,25 @@ namespace OrderApi.Controllers;
 [Produces("application/json")]
 public sealed class OrdersController : ControllerBase
 {
+    private static readonly IReadOnlyCollection<ProductCatalogItemDto> AvailableProducts =
+    [
+        new ProductCatalogItemDto(Guid.Parse("40000000-0000-0000-0000-000000000001"), "Sample Product A", 49.99m),
+        new ProductCatalogItemDto(Guid.Parse("40000000-0000-0000-0000-000000000002"), "Sample Product B", 50.01m),
+        new ProductCatalogItemDto(Guid.Parse("40000000-0000-0000-0000-000000000003"), "Sample Product C", 99.99m)
+    ];
+
     private readonly IOrderService _orderService;
 
     public OrdersController(IOrderService orderService)
     {
         _orderService = orderService;
     }
+
+    /// <summary>Get products available for order placement.</summary>
+    [HttpGet("products")]
+    [Authorize]
+    public ActionResult<IReadOnlyCollection<ProductCatalogItemDto>> GetAvailableProductsAsync()
+        => Ok(AvailableProducts);
 
     /// <summary>Place a new order.</summary>
     /// <param name="command">Order placement command with items, discount type, and payment provider.</param>
@@ -62,7 +75,7 @@ public sealed class OrdersController : ControllerBase
 
             return NoContent();
         }
-        catch (UnauthorizedAccessException ex)
+        catch (UnauthorizedAccessException)
         {
             return Forbid();
         }
@@ -94,7 +107,7 @@ public sealed class OrdersController : ControllerBase
 
             return Ok(order);
         }
-        catch (UnauthorizedAccessException ex)
+        catch (UnauthorizedAccessException)
         {
             return Forbid();
         }

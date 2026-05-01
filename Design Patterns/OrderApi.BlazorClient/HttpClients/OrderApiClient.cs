@@ -12,6 +12,9 @@ public sealed class OrderApiClient : ApiClientBase, IOrderApiClient
     {
     }
 
+    public Task<ProductCatalogItemResponse[]?> GetAvailableProductsAsync() =>
+        ExecuteAsync<ProductCatalogItemResponse[]>(() => Http.GetAsync("/api/orders/products"));
+
     public Task<OrderResponse[]?> GetMyOrdersAsync() =>
         ExecuteAsync<OrderResponse[]>(() => Http.GetAsync("/api/orders/my"));
 

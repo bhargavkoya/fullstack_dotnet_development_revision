@@ -18,6 +18,10 @@ public sealed class OrderService : IOrderService
     }
 
     /// <inheritdoc />
+    public async Task<ProductCatalogItemResponse[]> GetAvailableProductsAsync()
+        => await _orderApiClient.GetAvailableProductsAsync() ?? [];
+
+    /// <inheritdoc />
     public async Task<OrderResponse[]> GetMyOrdersAsync()
     {
         var orders = await _orderApiClient.GetMyOrdersAsync() ?? [];

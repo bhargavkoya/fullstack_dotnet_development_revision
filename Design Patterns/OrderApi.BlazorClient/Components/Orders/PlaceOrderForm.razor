@@ -8,30 +8,30 @@
                 </MudChip>
             </MudStack>
 
-            <MudSelect T="string"
-                       Label="Discount Type"
-                       Variant="Variant.Outlined"
-                       Value="@DiscountType"
-                       ValueChanged="OnDiscountTypeChanged"
-                       Dense="true">
-                <MudSelectItem Value="@NoneDiscountType">None</MudSelectItem>
-                <MudSelectItem Value="@SeasonalDiscountType">Seasonal (-15%)</MudSelectItem>
-                <MudSelectItem Value="@LoyaltyDiscountType">Loyalty (-20%)</MudSelectItem>
-            </MudSelect>
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true">
+                Customer discount is fixed to <strong>@GetDiscountLabel(DiscountType)</strong>.
+            </MudAlert>
 
             <MudStack Spacing="3">
                 @for (var index = 0; index < Items.Count; index++)
                 {
                     var item = Items[index];
+                    var currentIndex = index;
 
-                    <MudPaper Class="pa-4" Elevation="0" Outlined="true">
+                    <MudPaper @key="item.DraftId" Class="pa-4" Elevation="0" Outlined="true">
                         <MudGrid Spacing="2">
                             <MudItem xs="12" md="6">
-                                <MudTextField T="string"
-                                              Label="Product Name"
-                                              Variant="Variant.Outlined"
-                                              @bind-Value="item.ProductName"
-                                              Immediate="true" />
+                                <MudSelect T="Guid"
+                                           Label="Product"
+                                           Variant="Variant.Outlined"
+                                           Dense="true"
+                                           Value="item.ProductId"
+                                           ValueChanged="value => OnProductChanged(currentIndex, value)">
+                                    @foreach (var product in Products)
+                                    {
+                                        <MudSelectItem Value="@product.ProductId">@product.ProductName</MudSelectItem>
+                                    }
+                                </MudSelect>
                             </MudItem>
                             <MudItem xs="6" md="2">
                                 <MudNumericField T="int"
@@ -45,15 +45,16 @@
                                 <MudNumericField T="decimal"
                                                  Label="Unit Price"
                                                  Variant="Variant.Outlined"
-                                                 @bind-Value="item.UnitPrice"
+                                                 Value="item.UnitPrice"
+                                                 ReadOnly="true"
                                                  Min="0"
-                                                 Immediate="true" />
+                                                 HideSpinButtons="true" />
                             </MudItem>
                             <MudItem xs="12" md="2" Class="d-flex align-center justify-end">
                                 <MudIconButton Icon="@Icons.Material.Filled.Delete"
                                                Color="Color.Error"
                                                Disabled="@(Items.Count == 1)"
-                                               OnClick="() => RemoveItemAsync(index)" />
+                                               OnClick="() => RemoveItemAsync(currentIndex)" />
                             </MudItem>
                         </MudGrid>
                     </MudPaper>
@@ -81,18 +82,14 @@
 
 @code
 {
-    private const string NoneDiscountType = "none";
-    private const string SeasonalDiscountType = "seasonal";
-    private const string LoyaltyDiscountType = "loyalty";
-
     [Parameter]
     public List<PlaceOrderLineDraft> Items { get; set; } = [];
 
     [Parameter]
-    public string DiscountType { get; set; } = "none";
+    public IReadOnlyList<ProductCatalogItemResponse> Products { get; set; } = [];
 
     [Parameter]
-    public EventCallback<string> DiscountTypeChanged { get; set; }
+    public string DiscountType { get; set; } = "loyalty";
 
     [Parameter]
     public decimal Subtotal { get; set; }
@@ -103,13 +100,22 @@
     [Parameter]
     public decimal TotalAmount { get; set; }
 
-    private async Task OnDiscountTypeChanged(string value)
+    private async Task AddItemAsync()
     {
-        DiscountType = value;
-        await DiscountTypeChanged.InvokeAsync(value);
-    }
+        await InvokeAsync(() =>
+        {
+            var newItem = new PlaceOrderLineDraft();
+            if (Products.Count > 0)
+            {
+                var defaultProduct = Products[0];
+                newItem.ProductId = defaultProduct.ProductId;
+                newItem.ProductName = defaultProduct.ProductName;
+                newItem.UnitPrice = defaultProduct.UnitPrice;
+            }
 
-    private async Task AddItemAsync() => await InvokeAsync(() => Items.Add(new PlaceOrderLineDraft()));
+            Items.Add(newItem);
+        });
+    }
 
     private async Task RemoveItemAsync(int index)
     {
@@ -120,4 +126,32 @@
 
         await InvokeAsync(() => Items.RemoveAt(index));
     }
+
+    private Task OnProductChanged(int itemIndex, Guid productId)
+    {
+        if (itemIndex < 0 || itemIndex >= Items.Count)
+        {
+            return Task.CompletedTask;
+        }
+
+        var product = Products.FirstOrDefault(item => item.ProductId == productId);
+        if (product is null)
+        {
+            return Task.CompletedTask;
+        }
+
+        var item = Items[itemIndex];
+        item.ProductId = product.ProductId;
+        item.ProductName = product.ProductName;
+        item.UnitPrice = product.UnitPrice;
+
+        return Task.CompletedTask;
+    }
+
+    private static string GetDiscountLabel(string discountType) => discountType.ToLowerInvariant() switch
+    {
+        "loyalty" => "Loyalty",
+        "seasonal" => "Seasonal",
+        _ => "None"
+    };
 }

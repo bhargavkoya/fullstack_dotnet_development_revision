@@ -6,6 +6,7 @@ namespace OrderApi.BlazorClient.HttpClients;
 /// <summary>[ISP][OCP] Exposes only order-related HTTP calls for read/write order workflows.</summary>
 public interface IOrderApiClient
 {
+    Task<ProductCatalogItemResponse[]?> GetAvailableProductsAsync();
     Task<OrderResponse[]?> GetMyOrdersAsync();
     Task<OrderResponse[]?> GetAllOrdersAsync();
     Task<OrderResponse?> GetOrderByIdAsync(Guid id);

@@ -4,7 +4,10 @@ namespace OrderApi.BlazorClient.Models;
 public sealed class PlaceOrderLineDraft
 {
     /// <summary>[SRP] Stable draft identifier used by the UI when mutating the line list.</summary>
-    public Guid ProductId { get; init; } = Guid.NewGuid();
+    public Guid DraftId { get; } = Guid.NewGuid();
+
+    /// <summary>[SRP] Product selected from the catalog.</summary>
+    public Guid ProductId { get; set; }
 
     /// <summary>[SRP] Product name entered by the user.</summary>
     public string ProductName { get; set; } = string.Empty;
