@@ -152,6 +152,18 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddControllers();
 
+// ─── CORS: allow Blazor client origins (add other origins if you run the client on different ports)
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("BlazorClient", policy =>
+    {
+        policy.WithOrigins("https://localhost:7017", "http://localhost:5176")
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
+});
+
 var app = builder.Build();
 
 // ─── Seed the database with test data ──────────────────────
@@ -168,6 +180,10 @@ app.UseSwaggerUI(c =>
 {
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "Order Management API v1");
 });
+
+// Apply CORS policy so browser-based requests from the Blazor client are allowed.
+// This must run before authentication/authorization.
+app.UseCors("BlazorClient");
 
 app.UseHttpsRedirection();
 app.UseAuthentication();
